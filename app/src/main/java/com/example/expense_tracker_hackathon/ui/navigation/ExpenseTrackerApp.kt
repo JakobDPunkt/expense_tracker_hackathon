@@ -1,10 +1,10 @@
 /*  src/main/java/com/example/expense_tracker_hackathon/ui/navigation/ExpenseTrackerApp.kt  */
 package com.example.expense_tracker_hackathon.ui.navigation
 
+import androidx.compose.material3.Icon
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material3.Icon
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Settings
@@ -20,7 +20,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
@@ -42,7 +41,10 @@ sealed class Screen(val route: String, val label: String, val icon: ImageVector)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ExpenseTrackerApp() {
+fun ExpenseTrackerApp(
+    isDarkTheme: Boolean,
+    onToggleTheme: () -> Unit
+) {
     val navController = rememberNavController()
 
     Scaffold(
@@ -50,7 +52,7 @@ fun ExpenseTrackerApp() {
             CenterAlignedTopAppBar(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(128.dp),
+                    .height(100.dp),
                 title = {
                     Box(
                         modifier = Modifier
@@ -61,13 +63,13 @@ fun ExpenseTrackerApp() {
                         Image(
                             painter = painterResource(R.drawable.icon_broad),
                             contentDescription = "Lumo",
-                            modifier = Modifier
-                                .height(128.dp)
+                            modifier = Modifier.height(72.dp)
                         )
                     }
                 },
+                // <-- use theme's primaryContainer so it flips in dark mode
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = Color(0xFFF7F9F5),
+                    containerColor    = MaterialTheme.colorScheme.primaryContainer,
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             )
@@ -75,12 +77,10 @@ fun ExpenseTrackerApp() {
         bottomBar = {
             NavigationBar {
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
-                val currentDestination = navBackStackEntry?.destination
+                val currentDest = navBackStackEntry?.destination
                 Screen.items.forEach { screen ->
                     NavigationBarItem(
-                        selected = currentDestination
-                            ?.hierarchy
-                            ?.any { it.route == screen.route } == true,
+                        selected = currentDest?.hierarchy?.any { it.route == screen.route } == true,
                         onClick = {
                             navController.navigate(screen.route) {
                                 popUpTo(navController.graph.findStartDestination().id) { saveState = true }
@@ -96,13 +96,18 @@ fun ExpenseTrackerApp() {
         }
     ) { innerPadding ->
         NavHost(
-            navController   = navController,
+            navController    = navController,
             startDestination = Screen.Expenses.route,
-            modifier        = Modifier.padding(innerPadding)
+            modifier         = Modifier.padding(innerPadding)
         ) {
             composable(Screen.Expenses.route) { ExpensesScreen() }
             composable(Screen.Page2.route)    { Page2Screen() }
-            composable(Screen.Page3.route)    { Page3Screen() }
+            composable(Screen.Page3.route)    {
+                Page3Screen(
+                    isDarkTheme   = isDarkTheme,
+                    onToggleTheme = onToggleTheme
+                )
+            }
         }
     }
 }

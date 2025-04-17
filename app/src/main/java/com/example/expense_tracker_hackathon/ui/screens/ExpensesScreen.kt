@@ -29,19 +29,24 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-/* ─── View‑model & helpers (unchanged) ─── */
 @OptIn(ExperimentalMaterial3Api::class)
 class ExpenseViewModel(private val db: ExpenseDatabase) : ViewModel() {
     private val dao = db.expenseDao()
     val expenses: Flow<List<ExpenseItem>> = dao.getAll()
+
     fun addExpense(desc: String, pri: Double, cat: String, date: String) =
         viewModelScope.launch { dao.insert(ExpenseItem(name = desc, price = pri, category = cat, date = date)) }
     fun updateExpense(item: ExpenseItem) = viewModelScope.launch { dao.update(item) }
     fun deleteExpense(item: ExpenseItem) = viewModelScope.launch { dao.delete(item) }
+
+    // ← new: clear entire table
+    fun clearAllExpenses() = viewModelScope.launch { dao.clearAll() }
 }
+
 class ExpenseViewModelFactory(private val db: ExpenseDatabase) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T = ExpenseViewModel(db) as T
 }
+
 @Composable fun rememberDatabase(): ExpenseDatabase {
     val ctx = LocalContext.current
     return remember {
@@ -120,7 +125,7 @@ fun ExpensesScreen() {
     }
 }
 
-/* ─── Bottom‑sheet (unchanged) ─── */
+/* ─── Bottom‑sheet ─── */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AddExpenseSheet(

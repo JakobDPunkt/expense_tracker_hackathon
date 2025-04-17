@@ -19,9 +19,13 @@ interface ExpenseDao {
     fun getAll(): Flow<List<ExpenseItem>>
     @Update suspend fun update(item: ExpenseItem)
     @Delete suspend fun delete(item: ExpenseItem)
+
+    // ← new: delete every row
+    @Query("DELETE FROM ExpenseItem")
+    suspend fun clearAll()
 }
 
-@Database(entities = [ExpenseItem::class], version = 4)
+@Database(entities = [ExpenseItem::class], version = 5)
 abstract class ExpenseDatabase : RoomDatabase() {
     abstract fun expenseDao(): ExpenseDao
 }
