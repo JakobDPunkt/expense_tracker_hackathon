@@ -63,7 +63,7 @@ fun ExpensesScreen() {
 
     // Form state
     var desc by remember { mutableStateOf("") }
-    var amt  by remember { mutableStateOf("") }
+    var pri  by remember { mutableStateOf("") }
     var cat  by remember { mutableStateOf("") }
 
     // Category options
@@ -98,9 +98,9 @@ fun ExpensesScreen() {
         Spacer(Modifier.height(4.dp))
 
         TextField(
-            value = amt,
-            onValueChange = { amt = it },
-            label = { Text("Amount") },
+            value = pri,
+            onValueChange = { pri = it },
+            label = { Text("Price") },
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(Modifier.height(4.dp))
@@ -136,10 +136,10 @@ fun ExpensesScreen() {
 
         Button(
             onClick = {
-                val amount = amt.toDoubleOrNull()
-                if (desc.isNotBlank() && amount != null && cat.isNotBlank() && dateString.isNotBlank()) {
-                    vm.addExpense(desc, amount, cat, dateString)
-                    desc = ""; amt = ""; cat = ""
+                val price = pri.toDoubleOrNull()
+                if (desc.isNotBlank() && price != null && cat.isNotBlank() && dateString.isNotBlank()) {
+                    vm.addExpense(desc, price, cat, dateString)
+                    desc = ""; pri = ""; cat = ""
                     datePickerState.selectedDateMillis = todayMillis
                 } else {
                     Toast.makeText(ctx, "Please fill all fields correctly", Toast.LENGTH_SHORT).show()
@@ -160,7 +160,7 @@ fun ExpensesScreen() {
                 .padding(8.dp)
         ) {
             Text("Name", Modifier.weight(2f), color = Color.White)
-            Text("Amount",      Modifier.weight(1f), color = Color.White)
+            Text("Price",      Modifier.weight(1f), color = Color.White)
             Text("Category",    Modifier.weight(1f), color = Color.White)
             Text("Date",        Modifier.weight(1f), color = Color.White)
             Spacer(Modifier.weight(1f))
@@ -186,21 +186,21 @@ fun ExpenseRow(
 ) {
     var editing by remember { mutableStateOf(false) }
     var desc by remember { mutableStateOf(exp.name) }
-    var amt  by remember { mutableStateOf(exp.price.toString()) }
+    var pri  by remember { mutableStateOf(exp.price.toString()) }
     var cat  by remember { mutableStateOf(exp.category) }
     var date by remember { mutableStateOf(exp.date) }
 
     if (editing) {
         Row(Modifier.fillMaxWidth().padding(4.dp)) {
             TextField(desc, { desc = it }, Modifier.weight(2f))
-            TextField(amt,  { amt  = it }, Modifier.weight(1f))
+            TextField(pri,  { pri  = it }, Modifier.weight(1f))
             TextField(cat,  { cat  = it }, Modifier.weight(1f))
             TextField(date, { date = it }, Modifier.weight(1f))
             Button(onClick = {
                 onUpdate(
                     exp.copy(
-                        name = desc,
-                        price      = amt.toDoubleOrNull() ?: 0.0,
+                        name        = desc,
+                        price       = pri.toDoubleOrNull() ?: 0.0,
                         category    = cat,
                         date        = date
                     )
