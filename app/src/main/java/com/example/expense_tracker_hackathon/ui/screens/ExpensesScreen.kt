@@ -1,5 +1,4 @@
-/*  src/main/java/com/example/expense_tracker_hackathon/ui/ExpensesScreen.kt  */
-package com.example.expense_tracker_hackathon.ui
+package com.example.expense_tracker_hackathon.ui.screens
 
 import android.widget.Toast
 import androidx.compose.foundation.background
@@ -196,12 +195,17 @@ fun ExpenseRow(
     val parseDate = remember { DateTimeFormatter.ofPattern("yyyy-MM-dd") }
     var dateMillis by remember {
         mutableStateOf(
-            LocalDate.parse(exp.date, parseDate)
-                .atStartOfDay(ZoneId.systemDefault())
-                .toInstant()
-                .toEpochMilli()
+            runCatching {
+                LocalDate
+                    .parse(exp.date, parseDate)
+                    .atStartOfDay(ZoneId.systemDefault())
+                    .toInstant()
+                    .toEpochMilli()
+            }
+                .getOrDefault(System.currentTimeMillis())
         )
     }
+
 
     Card(
         Modifier.fillMaxWidth().padding(vertical = 4.dp),

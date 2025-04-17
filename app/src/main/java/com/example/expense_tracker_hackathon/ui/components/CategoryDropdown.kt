@@ -1,4 +1,3 @@
-// File: com/example/expense_tracker/ui/components/CategoryDropdown.kt
 package com.example.expense_tracker_hackathon.ui.components
 
 import androidx.compose.foundation.layout.fillMaxWidth

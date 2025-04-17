@@ -1,4 +1,4 @@
-package com.example.expense_tracker_hackathon.ui
+package com.example.expense_tracker_hackathon.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Divider
