@@ -1,3 +1,4 @@
+/*  src/main/java/com/example/expense_tracker_hackathon/ui/ExpensesScreen.kt  */
 package com.example.expense_tracker_hackathon.ui
 
 import android.widget.Toast
@@ -11,7 +12,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
@@ -22,6 +22,7 @@ import androidx.room.Room
 import com.example.expense_tracker_hackathon.data.ExpenseDatabase
 import com.example.expense_tracker_hackathon.data.ExpenseItem
 import com.example.expense_tracker_hackathon.ui.components.CategoryDropdown
+import com.example.expense_tracker_hackathon.ui.components.DatePickerField
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -29,15 +30,13 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-/* ──────────────────── View‑model & helpers (unchanged) ───────────────────── */
+/* ─── View‑model & helpers (unchanged) ─── */
 @OptIn(ExperimentalMaterial3Api::class)
 class ExpenseViewModel(private val db: ExpenseDatabase) : ViewModel() {
     private val dao = db.expenseDao()
     val expenses: Flow<List<ExpenseItem>> = dao.getAll()
-
     fun addExpense(desc: String, amt: Double, cat: String, date: String) =
         viewModelScope.launch { dao.insert(ExpenseItem(name = desc, price = amt, category = cat, date = date)) }
-
     fun updateExpense(item: ExpenseItem) = viewModelScope.launch { dao.update(item) }
     fun deleteExpense(item: ExpenseItem) = viewModelScope.launch { dao.delete(item) }
 }
@@ -53,7 +52,7 @@ class ExpenseViewModelFactory(private val db: ExpenseDatabase) : ViewModelProvid
     }
 }
 
-/* ───────────────────────────── Screen UI ─────────────────────────────────── */
+/* ─── Screen UI ─── */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExpensesScreen() {
@@ -61,7 +60,9 @@ fun ExpensesScreen() {
     val vm: ExpenseViewModel = viewModel(factory = ExpenseViewModelFactory(db))
     val expenses by vm.expenses.collectAsState(initial = emptyList())
 
-    var showSheet by remember { mutableStateOf(false) }
+    /* single source of truth for which row is in edit mode */
+    var editingId by remember { mutableStateOf<Int?>(null) }
+    var showSheet  by remember { mutableStateOf(false) }
 
     Scaffold(
         floatingActionButton = {
@@ -70,35 +71,22 @@ fun ExpensesScreen() {
             }
         }
     ) { padding ->
-
-        val grouped = remember(expenses) {
-            expenses.sortedByDescending { it.date }
-                .groupBy { it.date }
-        }
+        val grouped = remember(expenses) { expenses.sortedByDescending { it.date }.groupBy { it.date } }
 
         if (grouped.isEmpty()) {
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentAlignment = Alignment.Center
-            ) { Text("No expenses yet") }
+            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                Text("No expenses yet")
+            }
         } else {
-            LazyColumn(
-                Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-            ) {
+            LazyColumn(Modifier.fillMaxSize().padding(padding)) {
                 grouped.forEach { (date, list) ->
-                    item(key = "header-$date") {
+                    item("header-$date") {
                         Surface(
-                            Modifier
-                                .fillMaxWidth()
-                                .background(MaterialTheme.colorScheme.primaryContainer)
+                            Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.primaryContainer)
                         ) {
                             Text(
-                                text = date,
-                                modifier = Modifier.padding(8.dp),
+                                date,
+                                Modifier.padding(8.dp),
                                 style = MaterialTheme.typography.titleSmall,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer
                             )
@@ -106,9 +94,15 @@ fun ExpensesScreen() {
                     }
                     items(list, key = { it.id }) { exp ->
                         ExpenseRow(
-                            exp = exp,
-                            onUpdate = vm::updateExpense,
-                            onDelete = { vm.deleteExpense(exp) }
+                            exp            = exp,
+                            isEditing      = (editingId == exp.id),
+                            onStartEdit    = { editingId = exp.id },
+                            onFinishEdit   = { editingId = null },
+                            onUpdate       = vm::updateExpense,
+                            onDelete       = {
+                                vm.deleteExpense(exp)
+                                editingId = null
+                            }
                         )
                     }
                 }
@@ -127,43 +121,25 @@ fun ExpensesScreen() {
     }
 }
 
-/* ───────────────────── bottom‑sheet composable ───────────────────────────── */
+/* ─── Bottom‑sheet (unchanged) ─── */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AddExpenseSheet(
     onDismiss: () -> Unit,
     onAdd: (String, Double, String, String) -> Unit
 ) {
+    val ctx = LocalContext.current
     var desc by remember { mutableStateOf("") }
     var amt  by remember { mutableStateOf("") }
     var cat  by remember { mutableStateOf("") }
 
     val categories = listOf("Food", "Transport", "Entertainment", "Utilities", "Other")
+    val todayMillis = remember { System.currentTimeMillis() }
+    var dateMillis  by remember { mutableStateOf(todayMillis) }
+    val formatter   = remember { DateTimeFormatter.ofPattern("yyyy-MM-dd") }
 
-    val todayMillis = remember {
-        LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
-    }
-    val datePickerState = rememberDatePickerState(initialSelectedDateMillis = todayMillis)
-    val dateFormatter = remember { DateTimeFormatter.ofPattern("yyyy-MM-dd") }
-    val dateString = remember(datePickerState.selectedDateMillis) {
-        datePickerState.selectedDateMillis?.let { millis ->
-            Instant.ofEpochMilli(millis)
-                .atZone(ZoneId.systemDefault())
-                .toLocalDate()
-                .format(dateFormatter)
-        } ?: ""
-    }
-    var showDatePicker by remember { mutableStateOf(false) }
-    val ctx = LocalContext.current
-
-    /* ── no WindowInsets parameter (works on older Compose) ── */
     ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
+        Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("New expense", style = MaterialTheme.typography.titleMedium)
 
             TextField(desc, { desc = it }, Modifier.fillMaxWidth(), label = { Text("Name") })
@@ -176,25 +152,21 @@ private fun AddExpenseSheet(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            OutlinedButton(
-                onClick = { showDatePicker = true },
+            DatePickerField(
+                dateMillis = dateMillis,
+                onDateChange = { dateMillis = it },
                 modifier = Modifier.fillMaxWidth()
-            ) { Text(if (dateString.isNotBlank()) dateString else "Select date") }
-
-            if (showDatePicker) {
-                DatePickerDialog(
-                    onDismissRequest = { showDatePicker = false },
-                    confirmButton = { TextButton({ showDatePicker = false }) { Text("OK") } },
-                    dismissButton = { TextButton({ showDatePicker = false }) { Text("Cancel") } }
-                ) { DatePicker(state = datePickerState) }
-            }
+            )
 
             Spacer(Modifier.height(12.dp))
-
             Button(
                 onClick = {
                     val amount = amt.toDoubleOrNull()
-                    if (desc.isNotBlank() && amount != null && cat.isNotBlank() && dateString.isNotBlank()) {
+                    if (desc.isNotBlank() && amount != null && cat.isNotBlank()) {
+                        val dateString = Instant.ofEpochMilli(dateMillis)
+                            .atZone(ZoneId.systemDefault())
+                            .toLocalDate()
+                            .format(formatter)
                         onAdd(desc, amount, cat, dateString)
                     } else {
                         Toast.makeText(ctx, "Please fill all fields correctly", Toast.LENGTH_SHORT).show()
@@ -206,55 +178,79 @@ private fun AddExpenseSheet(
     }
 }
 
-/* ───────────────────────── Row with card layout ─────────────────────────── */
+/* ─── Row (now controlled by parent) ─── */
 @Composable
 fun ExpenseRow(
     exp: ExpenseItem,
+    isEditing: Boolean,
+    onStartEdit: () -> Unit,
+    onFinishEdit: () -> Unit,
     onUpdate: (ExpenseItem) -> Unit,
     onDelete: () -> Unit
 ) {
-    var editing by remember { mutableStateOf(false) }
     var desc by remember { mutableStateOf(exp.name) }
     var amt  by remember { mutableStateOf(exp.price.toString()) }
     var cat  by remember { mutableStateOf(exp.category) }
 
+    val formatter = remember { DateTimeFormatter.ofPattern("yyyy-MM-dd") }
+    val parseDate = remember { DateTimeFormatter.ofPattern("yyyy-MM-dd") }
+    var dateMillis by remember {
+        mutableStateOf(
+            LocalDate.parse(exp.date, parseDate)
+                .atStartOfDay(ZoneId.systemDefault())
+                .toInstant()
+                .toEpochMilli()
+        )
+    }
+
     Card(
-        Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
+        Modifier.fillMaxWidth().padding(vertical = 4.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
-        if (editing) {
+        if (isEditing) {
             Column(Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 TextField(desc, { desc = it }, label = { Text("Name") })
                 TextField(amt,  { amt  = it }, label = { Text("Amount") })
                 TextField(cat,  { cat  = it }, label = { Text("Category") })
+                DatePickerField(
+                    dateMillis = dateMillis,
+                    onDateChange = { dateMillis = it },
+                    modifier = Modifier.fillMaxWidth()
+                )
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    TextButton({ editing = false }) { Text("Cancel") }
+                    TextButton(onFinishEdit) { Text("Cancel") }
                     TextButton({
-                        onUpdate(exp.copy(name = desc, price = amt.toDoubleOrNull() ?: 0.0, category = cat))
-                        editing = false
+                        onUpdate(
+                            exp.copy(
+                                name = desc,
+                                price = amt.toDoubleOrNull() ?: 0.0,
+                                category = cat,
+                                date = Instant.ofEpochMilli(dateMillis)
+                                    .atZone(ZoneId.systemDefault())
+                                    .toLocalDate()
+                                    .format(formatter)
+                            )
+                        )
+                        onFinishEdit()
                     }) { Text("Save") }
                     TextButton(onDelete) { Text("Delete") }
                 }
             }
         } else {
             Row(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(12.dp),
+                Modifier.fillMaxWidth().padding(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(Modifier.weight(1f)) {
                     Text(desc, style = MaterialTheme.typography.bodyLarge)
-                    Text(cat, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                    Text(cat,  style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
                 }
                 Text(
                     text = exp.price.toString(),
                     style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier.padding(horizontal = 8.dp)
                 )
-                TextButton({ editing = true }) { Text("Edit") }
+                TextButton(onStartEdit) { Text("Edit") }
             }
         }
     }
