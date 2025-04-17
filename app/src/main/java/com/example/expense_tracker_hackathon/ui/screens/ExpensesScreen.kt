@@ -24,10 +24,15 @@ import com.example.expense_tracker_hackathon.ui.components.CategoryDropdown
 import com.example.expense_tracker_hackathon.ui.components.DatePickerField
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
+import java.text.NumberFormat
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.Currency
+import java.util.Locale
+
+/** ViewModel and Factory **/
 
 class ExpenseViewModel(db: ExpenseDatabase) : ViewModel() {
     private val dao = db.expenseDao()
@@ -37,8 +42,6 @@ class ExpenseViewModel(db: ExpenseDatabase) : ViewModel() {
         viewModelScope.launch { dao.insert(ExpenseItem(name = desc, price = pri, category = cat, date = date)) }
     fun updateExpense(item: ExpenseItem) = viewModelScope.launch { dao.update(item) }
     fun deleteExpense(item: ExpenseItem) = viewModelScope.launch { dao.delete(item) }
-
-    // ← new: clear entire table
     fun clearAllExpenses() = viewModelScope.launch { dao.clearAll() }
 }
 
@@ -47,7 +50,8 @@ class ExpenseViewModelFactory(private val db: ExpenseDatabase) : ViewModelProvid
     override fun <T : ViewModel> create(modelClass: Class<T>): T = ExpenseViewModel(db) as T
 }
 
-@Composable fun rememberDatabase(): ExpenseDatabase {
+@Composable
+fun rememberDatabase(): ExpenseDatabase {
     val ctx = LocalContext.current
     return remember {
         Room.databaseBuilder(ctx, ExpenseDatabase::class.java, "expense-db")
@@ -56,16 +60,24 @@ class ExpenseViewModelFactory(private val db: ExpenseDatabase) : ViewModelProvid
     }
 }
 
-/* ─── Screen UI ─── */
+/** Screen UI **/
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExpensesScreen() {
     val db = rememberDatabase()
     val vm: ExpenseViewModel = viewModel(factory = ExpenseViewModelFactory(db))
     val expenses by vm.expenses.collectAsState(initial = emptyList())
 
-    /* single source of truth for which row is in edit mode */
+    // Euro formatter
+    val moneyFmt = remember {
+        NumberFormat.getCurrencyInstance(Locale.GERMANY).apply {
+            currency = Currency.getInstance("EUR")
+        }
+    }
+
     var editingId by remember { mutableStateOf<Int?>(null) }
-    var showSheet  by remember { mutableStateOf(false) }
+    var showSheet by remember { mutableStateOf(false) }
 
     Scaffold(
         floatingActionButton = {
@@ -74,18 +86,31 @@ fun ExpensesScreen() {
             }
         }
     ) { padding ->
-        val grouped = remember(expenses) { expenses.sortedByDescending { it.date }.groupBy { it.date } }
+        val grouped = remember(expenses) {
+            expenses.sortedByDescending { it.date }.groupBy { it.date }
+        }
 
         if (grouped.isEmpty()) {
-            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentAlignment = Alignment.Center
+            ) {
                 Text("No expenses yet")
             }
         } else {
-            LazyColumn(Modifier.fillMaxSize().padding(padding)) {
+            LazyColumn(
+                Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+            ) {
                 grouped.forEach { (date, list) ->
                     item("header-$date") {
                         Surface(
-                            Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.primaryContainer)
+                            Modifier
+                                .fillMaxWidth()
+                                .background(MaterialTheme.colorScheme.primaryContainer)
                         ) {
                             Text(
                                 date,
@@ -97,15 +122,16 @@ fun ExpensesScreen() {
                     }
                     items(list, key = { it.id }) { exp ->
                         ExpenseRow(
-                            exp            = exp,
-                            isEditing      = (editingId == exp.id),
-                            onStartEdit    = { editingId = exp.id },
-                            onFinishEdit   = { editingId = null },
-                            onUpdate       = vm::updateExpense,
-                            onDelete       = {
+                            exp = exp,
+                            isEditing = (editingId == exp.id),
+                            onStartEdit = { editingId = exp.id },
+                            onFinishEdit = { editingId = null },
+                            onUpdate = vm::updateExpense,
+                            onDelete = {
                                 vm.deleteExpense(exp)
                                 editingId = null
-                            }
+                            },
+                            moneyFmt = moneyFmt
                         )
                     }
                 }
@@ -124,7 +150,6 @@ fun ExpensesScreen() {
     }
 }
 
-/* ─── Bottom‑sheet ─── */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AddExpenseSheet(
@@ -133,20 +158,28 @@ private fun AddExpenseSheet(
 ) {
     val ctx = LocalContext.current
     var desc by remember { mutableStateOf("") }
-    var pri  by remember { mutableStateOf("") }
-    var cat  by remember { mutableStateOf("") }
+    var pri by remember { mutableStateOf("") }
+    var cat by remember { mutableStateOf("") }
 
-    val categories = listOf("Food", "Apartment", "Social", "Transport", "Entertainment", "Utilities", "Travel", "Other")
+    val categories = listOf(
+        "Food", "Apartment", "Social", "Transport",
+        "Entertainment", "Utilities", "Travel", "Other"
+    )
     val todayMillis = remember { System.currentTimeMillis() }
-    var dateMillis  by remember { mutableLongStateOf(todayMillis) }
-    val formatter   = remember { DateTimeFormatter.ofPattern("yyyy-MM-dd") }
+    var dateMillis by remember { mutableStateOf(todayMillis) }
+    val formatter = remember { DateTimeFormatter.ofPattern("yyyy-MM-dd") }
 
     ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             Text("New expense", style = MaterialTheme.typography.titleMedium)
 
             TextField(desc, { desc = it }, Modifier.fillMaxWidth(), label = { Text("Name") })
-            TextField(pri,  { pri  = it }, Modifier.fillMaxWidth(), label = { Text("Price") })
+            TextField(pri, { pri = it }, Modifier.fillMaxWidth(), label = { Text("Price (€)") })
 
             CategoryDropdown(
                 options = categories,
@@ -176,12 +209,13 @@ private fun AddExpenseSheet(
                     }
                 },
                 modifier = Modifier.fillMaxWidth()
-            ) { Text("Save") }
+            ) {
+                Text("Save")
+            }
         }
     }
 }
 
-/* ─── Row (now controlled by parent) ─── */
 @Composable
 fun ExpenseRow(
     exp: ExpenseItem,
@@ -189,37 +223,37 @@ fun ExpenseRow(
     onStartEdit: () -> Unit,
     onFinishEdit: () -> Unit,
     onUpdate: (ExpenseItem) -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    moneyFmt: NumberFormat
 ) {
     var desc by remember { mutableStateOf(exp.name) }
-    var pri  by remember { mutableStateOf(exp.price.toString()) }
-    var cat  by remember { mutableStateOf(exp.category) }
+    var pri by remember { mutableStateOf(exp.price.toString()) }
+    var cat by remember { mutableStateOf(exp.category) }
 
     val formatter = remember { DateTimeFormatter.ofPattern("yyyy-MM-dd") }
     val parseDate = remember { DateTimeFormatter.ofPattern("yyyy-MM-dd") }
     var dateMillis by remember {
-        mutableLongStateOf(
+        mutableStateOf(
             runCatching {
-                LocalDate
-                    .parse(exp.date, parseDate)
+                LocalDate.parse(exp.date, parseDate)
                     .atStartOfDay(ZoneId.systemDefault())
                     .toInstant()
                     .toEpochMilli()
-            }
-                .getOrDefault(System.currentTimeMillis())
+            }.getOrDefault(System.currentTimeMillis())
         )
     }
 
-
     Card(
-        Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
         if (isEditing) {
             Column(Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 TextField(desc, { desc = it }, label = { Text("Name") })
-                TextField(pri,  { pri  = it }, label = { Text("Price") })
-                TextField(cat,  { cat  = it }, label = { Text("Category") })
+                TextField(pri, { pri = it }, label = { Text("Price (€)") })
+                TextField(cat, { cat = it }, label = { Text("Category") })
                 DatePickerField(
                     dateMillis = dateMillis,
                     onDateChange = { dateMillis = it },
@@ -246,15 +280,17 @@ fun ExpenseRow(
             }
         } else {
             Row(
-                Modifier.fillMaxWidth().padding(12.dp),
+                Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(Modifier.weight(1f)) {
                     Text(desc, style = MaterialTheme.typography.bodyLarge)
-                    Text(cat,  style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                    Text(cat, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
                 }
                 Text(
-                    text = exp.price.toString(),
+                    moneyFmt.format(exp.price),
                     style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier.padding(horizontal = 8.dp)
                 )

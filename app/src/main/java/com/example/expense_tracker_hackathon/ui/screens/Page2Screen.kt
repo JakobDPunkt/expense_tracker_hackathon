@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import java.text.NumberFormat
+import java.util.Currency
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -35,7 +36,13 @@ fun Page2Screen() {
 
     val grandTotal = totals.values.sum()
     var selectedCategory by remember { mutableStateOf<String?>(null) }
-    val moneyFmt = remember { NumberFormat.getCurrencyInstance(Locale.getDefault()) }
+
+    // Euro formatter
+    val moneyFmt = remember {
+        NumberFormat.getCurrencyInstance(Locale.GERMANY).apply {
+            currency = Currency.getInstance("EUR")
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -62,7 +69,9 @@ fun Page2Screen() {
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable { selectedCategory = cat },
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        )
                     ) {
                         Row(
                             modifier = Modifier.padding(10.dp),
