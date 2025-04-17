@@ -92,7 +92,7 @@ fun ExpensesScreen() {
         TextField(
             value = desc,
             onValueChange = { desc = it },
-            label = { Text("Description") },
+            label = { Text("Name") },
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(Modifier.height(4.dp))
@@ -159,7 +159,7 @@ fun ExpensesScreen() {
                 .background(Color.Gray)
                 .padding(8.dp)
         ) {
-            Text("Description", Modifier.weight(2f), color = Color.White)
+            Text("Name", Modifier.weight(2f), color = Color.White)
             Text("Amount",      Modifier.weight(1f), color = Color.White)
             Text("Category",    Modifier.weight(1f), color = Color.White)
             Text("Date",        Modifier.weight(1f), color = Color.White)
