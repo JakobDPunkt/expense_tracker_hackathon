@@ -13,26 +13,31 @@ import java.text.NumberFormat
 import java.util.Locale
 import androidx.compose.foundation.clickable
 
-
 @Composable
 fun Page2Screen() {
-    // --- Obtain the same database & view‑model you already use on Page 1 -------------
+    // --- Obtain the same database & view‑model you already use on Page 1 -------------
     val db  = rememberDatabase()
     val vm: ExpenseViewModel = viewModel(factory = ExpenseViewModelFactory(db))
     val expenses by vm.expenses.collectAsState(initial = emptyList())
 
-    // --- Aggregate ------------------------------------------------------------------
+    // --- Define all possible categories --------------------------------------
+    val allCategories = listOf("Food", "Apartment", "Social", "Transport", "Entertainment", "Utilities", "Travel", "Other")
+
+    // --- Aggregate Expenses by Category --------------------------------------
     val totals = remember(expenses) {
         expenses
             .groupBy { it.category }
             .mapValues { (_, items) -> items.sumOf { it.price } }
-            .toSortedMap()                                 // optional: alphabetical order
+            .toSortedMap()  // optional: alphabetical order
     }
+
     val grandTotal = totals.values.sum()
 
-    // --- UI -------------------------------------------------------------------------
-    val moneyFmt = remember { NumberFormat.getCurrencyInstance(Locale.getDefault()) }
+    // --- State for selected category -----------------------------------------
     var selectedCategory by remember { mutableStateOf<String?>(null) }
+
+    // --- UI --------------------------------------------------------------------
+    val moneyFmt = remember { NumberFormat.getCurrencyInstance(Locale.getDefault()) }
 
     Column(
         modifier = Modifier
@@ -46,14 +51,17 @@ fun Page2Screen() {
         if (totals.isEmpty()) {
             Text("No expenses yet")
         } else {
-            totals.forEach { (cat, amt) ->
+            // --- Display All Categories (even those without expenses) -----------
+            allCategories.forEach { cat ->
+                val amount = totals[cat] ?: 0.0 // If the category has no expenses, set the amount to 0
+
                 Row(
                     Modifier
                         .fillMaxWidth()
                         .padding(vertical = 4.dp)
                         .clickable {
                             selectedCategory = if (selectedCategory == cat) {
-                                // If the same category is clicked again, deselect it
+                                // Deselect if clicked again
                                 null
                             } else {
                                 cat
@@ -62,7 +70,7 @@ fun Page2Screen() {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(cat, Modifier.weight(1f))
-                    Text(moneyFmt.format(amt))
+                    Text(moneyFmt.format(amount))
                 }
             }
 
@@ -70,6 +78,7 @@ fun Page2Screen() {
             Divider()
             Spacer(Modifier.height(8.dp))
 
+            // --- Show Total --------------------------------------------------------
             Row(
                 Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -78,7 +87,7 @@ fun Page2Screen() {
                 Text(moneyFmt.format(grandTotal), style = MaterialTheme.typography.titleMedium)
             }
 
-            // Details for a selected categories
+            // --- Show detailed expenses for selected category -------------------
             selectedCategory?.let { category ->
                 Spacer(Modifier.height(16.dp))
                 Text("Details for $category", style = MaterialTheme.typography.titleMedium)

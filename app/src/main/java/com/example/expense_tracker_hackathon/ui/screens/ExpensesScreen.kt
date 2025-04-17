@@ -133,7 +133,7 @@ private fun AddExpenseSheet(
     var pri  by remember { mutableStateOf("") }
     var cat  by remember { mutableStateOf("") }
 
-    val categories = listOf("Food", "Transport", "Entertainment", "Utilities", "Other")
+    val categories = listOf("Food", "Apartment", "Social", "Transport", "Entertainment", "Utilities", "Travel", "Other")
     val todayMillis = remember { System.currentTimeMillis() }
     var dateMillis  by remember { mutableStateOf(todayMillis) }
     val formatter   = remember { DateTimeFormatter.ofPattern("yyyy-MM-dd") }
