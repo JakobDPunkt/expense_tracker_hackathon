@@ -11,6 +11,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import java.text.NumberFormat
 import java.util.Locale
+import androidx.compose.foundation.clickable
+
 
 @Composable
 fun Page2Screen() {
@@ -30,6 +32,7 @@ fun Page2Screen() {
 
     // --- UI -------------------------------------------------------------------------
     val moneyFmt = remember { NumberFormat.getCurrencyInstance(Locale.getDefault()) }
+    var selectedCategory by remember { mutableStateOf<String?>(null) }
 
     Column(
         modifier = Modifier
@@ -47,10 +50,18 @@ fun Page2Screen() {
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 4.dp),
+                        .padding(vertical = 4.dp)
+                        .clickable {
+                            selectedCategory = if (selectedCategory == cat) {
+                                // If the same category is clicked again, deselect it
+                                null
+                            } else {
+                                cat
+                            }
+                        },
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(cat,      Modifier.weight(1f))
+                    Text(cat, Modifier.weight(1f))
                     Text(moneyFmt.format(amt))
                 }
             }
@@ -65,6 +76,27 @@ fun Page2Screen() {
             ) {
                 Text("Total", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
                 Text(moneyFmt.format(grandTotal), style = MaterialTheme.typography.titleMedium)
+            }
+
+            // Details for a selected categories
+            selectedCategory?.let { category ->
+                Spacer(Modifier.height(16.dp))
+                Text("Details for $category", style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(8.dp))
+
+                // Filter expenses based on the selected category
+                val selectedExpenses = expenses.filter { it.category == category }
+
+                // Show detailed expenses
+                selectedExpenses.forEach { expense ->
+                    Row(
+                        Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(expense.name, Modifier.weight(1f))
+                        Text(moneyFmt.format(expense.price))
+                    }
+                }
             }
         }
     }
