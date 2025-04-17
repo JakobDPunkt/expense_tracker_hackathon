@@ -7,11 +7,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.expense_tracker_hackathon.ui.screens.rememberDatabase
-import com.example.expense_tracker_hackathon.ui.screens.ExpenseViewModel
-import com.example.expense_tracker_hackathon.ui.screens.ExpenseViewModelFactory
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Page3Screen(
     isDarkTheme: Boolean,

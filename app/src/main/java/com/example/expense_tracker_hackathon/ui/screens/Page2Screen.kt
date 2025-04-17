@@ -2,6 +2,8 @@ package com.example.expense_tracker_hackathon.ui.screens
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
@@ -12,10 +14,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import java.text.NumberFormat
 import java.util.Locale
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Page2Screen() {
     val db = rememberDatabase()
@@ -55,6 +55,7 @@ fun Page2Screen() {
                     Text("No expenses yet")
                 }
             } else {
+                // Category totals
                 items(allCategories) { cat ->
                     val amt = totals[cat] ?: 0.0
                     Card(
@@ -87,11 +88,11 @@ fun Page2Screen() {
                     }
                 }
 
+                // Grand total
                 item {
                     Spacer(Modifier.height(12.dp))
                     Divider()
                     Spacer(Modifier.height(12.dp))
-
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
@@ -108,6 +109,7 @@ fun Page2Screen() {
                     }
                 }
 
+                // Details for selected category
                 selectedCategory?.let { category ->
                     val selectedExpenses = expenses.filter { it.category == category }
 
