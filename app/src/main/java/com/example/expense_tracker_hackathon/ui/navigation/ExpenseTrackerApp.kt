@@ -33,9 +33,9 @@ import com.example.expense_tracker_hackathon.ui.screens.Page2Screen
 import com.example.expense_tracker_hackathon.ui.screens.Page3Screen
 
 sealed class Screen(val route: String, val label: String, val icon: ImageVector) {
-    object Expenses : Screen("expenses", "Expenses", Icons.Default.Receipt)
-    object Page2    : Screen("page2",    "Analytics", Icons.Default.BarChart)
-    object Page3    : Screen("page3",    "Settings",  Icons.Default.Settings)
+    data object Expenses : Screen("expenses", "Expenses", Icons.Default.Receipt)
+    data object Page2    : Screen("page2",    "Analytics", Icons.Default.BarChart)
+    data object Page3    : Screen("page3",    "Settings",  Icons.Default.Settings)
     companion object { val items = listOf(Expenses, Page2, Page3) }
 }
 

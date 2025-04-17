@@ -29,8 +29,7 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-@OptIn(ExperimentalMaterial3Api::class)
-class ExpenseViewModel(private val db: ExpenseDatabase) : ViewModel() {
+class ExpenseViewModel(db: ExpenseDatabase) : ViewModel() {
     private val dao = db.expenseDao()
     val expenses: Flow<List<ExpenseItem>> = dao.getAll()
 
@@ -44,6 +43,7 @@ class ExpenseViewModel(private val db: ExpenseDatabase) : ViewModel() {
 }
 
 class ExpenseViewModelFactory(private val db: ExpenseDatabase) : ViewModelProvider.Factory {
+    @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T = ExpenseViewModel(db) as T
 }
 
@@ -57,7 +57,6 @@ class ExpenseViewModelFactory(private val db: ExpenseDatabase) : ViewModelProvid
 }
 
 /* ─── Screen UI ─── */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExpensesScreen() {
     val db = rememberDatabase()
@@ -139,7 +138,7 @@ private fun AddExpenseSheet(
 
     val categories = listOf("Food", "Apartment", "Social", "Transport", "Entertainment", "Utilities", "Travel", "Other")
     val todayMillis = remember { System.currentTimeMillis() }
-    var dateMillis  by remember { mutableStateOf(todayMillis) }
+    var dateMillis  by remember { mutableLongStateOf(todayMillis) }
     val formatter   = remember { DateTimeFormatter.ofPattern("yyyy-MM-dd") }
 
     ModalBottomSheet(onDismissRequest = onDismiss) {
@@ -199,7 +198,7 @@ fun ExpenseRow(
     val formatter = remember { DateTimeFormatter.ofPattern("yyyy-MM-dd") }
     val parseDate = remember { DateTimeFormatter.ofPattern("yyyy-MM-dd") }
     var dateMillis by remember {
-        mutableStateOf(
+        mutableLongStateOf(
             runCatching {
                 LocalDate
                     .parse(exp.date, parseDate)
